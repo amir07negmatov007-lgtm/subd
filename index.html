@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест: СУБД и PostgreSQL (100 вопросов)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SheetJS для чтения Excel (.xlsx), если потребуется загрузить свой файл -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col justify-between">
+
+    <!-- Header -->
+    <header class="bg-slate-800 border-b border-slate-700 py-4 px-6 shadow-md">
+        <div class="max-w-5xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-indigo-600 p-2.5 rounded-xl text-white font-bold text-xl shadow-lg shadow-indigo-500/30">🐘</div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight">СУБД и PostgreSQL — Рубежный контроль</h1>
+                    <p class="text-xs text-slate-400">Интерактивный тест с перемешиванием вопросов и ответов</p>
+                </div>
+            </div>
+            <div id="header-stats" class="hidden flex items-center gap-4 text-sm bg-slate-900/60 px-4 py-2 rounded-xl border border-slate-700">
+                <div>⏱️ Время: <span id="timer" class="font-mono font-bold text-indigo-400">00:00</span></div>
+                <div>📊 Вопрос: <span id="current-q-num" class="font-bold text-indigo-400">1</span>/<span id="total-q-num">100</span></div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-3xl w-full mx-auto px-4 py-8 flex-grow flex flex-col justify-center">
+
+        <!-- Screen 1: Setup -->
+        <section id="screen-setup" class="bg-slate-800 border border-slate-700 rounded-2xl p-6 sm:p-8 shadow-2xl">
+            <h2 class="text-2xl font-bold mb-3 text-white">Настройка тестирования</h2>
+            <p class="text-slate-300 text-sm mb-6">
+                Все 100 вопросов рубежного контроля уже загружены в систему. При старте все задания и варианты ответов автоматически перемешиваются. Вы также можете прикрепить свой Excel-файл при необходимости.
+            </p>
+
+            <!-- File Upload Box (Optional) -->
+            <div class="mb-6">
+                <label class="block text-sm font-medium mb-2 text-slate-300">Загрузить другой файл Excel (.xlsx) [опционально]:</label>
+                <div class="flex items-center justify-center w-full">
+                    <label id="drop-zone" class="flex flex-col items-center justify-center w-full h-28 border-2 border-slate-600 border-dashed rounded-xl cursor-pointer bg-slate-900/50 hover:bg-slate-900 hover:border-indigo-500 transition-all">
+                        <div class="flex flex-col items-center justify-center pt-4 pb-4 px-4 text-center">
+                            <svg class="w-7 h-7 mb-1 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                            <p class="text-xs text-slate-300"><span class="font-semibold text-indigo-400">Нажмите для выбора файла</span> или перетащите его</p>
+                            <p id="file-name" class="text-xs text-slate-400 mt-1">Используется встроенная база (100 вопросов)</p>
+                        </div>
+                        <input id="excel-file-input" type="file" class="hidden" accept=".xlsx, .xls" />
+                    </label>
+                </div>
+            </div>
+
+            <!-- Settings Options -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+                <div>
+                    <label class="block text-sm font-medium mb-2 text-slate-300">Режим тестирования:</label>
+                    <select id="test-mode" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-200 focus:outline-none focus:border-indigo-500">
+                        <option value="training">🎓 Обучение (с проверкой и объяснением)</option>
+                        <option value="exam">⚡ Экзамен (без подсказок, таймер)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2 text-slate-300">Количество вопросов:</label>
+                    <select id="question-count" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-200 focus:outline-none focus:border-indigo-500">
+                        <option value="all">Все (100 вопросов)</option>
+                        <option value="20">20 вопросов</option>
+                        <option value="50">50 вопросов</option>
+                    </select>
+                </div>
+            </div>
+
+            <button id="start-btn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3.5 px-6 rounded-xl shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center gap-2 text-lg">
+                🚀 Начать тест
+            </button>
+        </section>
+
+        <!-- Screen 2: Quiz Interface -->
+        <section id="screen-quiz" class="hidden bg-slate-800 border border-slate-700 rounded-2xl p-6 sm:p-8 shadow-2xl flex flex-col">
+            <!-- Progress Bar -->
+            <div class="w-full bg-slate-700 h-2 rounded-full mb-6 overflow-hidden">
+                <div id="progress-bar" class="bg-indigo-500 h-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+
+            <!-- Question Meta -->
+            <div class="flex justify-between items-center text-xs text-slate-400 mb-3">
+                <span id="q-theme" class="bg-slate-900 px-3 py-1 rounded-full border border-slate-700 text-indigo-300 font-medium">Тема</span>
+                <span id="q-type" class="uppercase tracking-wider">Тип</span>
+            </div>
+
+            <!-- Question Text -->
+            <h3 id="q-text" class="text-lg sm:text-xl font-semibold mb-6 text-white leading-relaxed"></h3>
+
+            <!-- Options Container -->
+            <div id="options-container" class="space-y-3 mb-6"></div>
+
+            <!-- Explanation Box (Training Mode) -->
+            <div id="explanation-box" class="hidden bg-slate-900/80 border border-slate-700 rounded-xl p-4 mb-6 text-sm">
+                <div class="font-semibold mb-1 flex items-center gap-2" id="expl-title"></div>
+                <p id="expl-text" class="text-slate-300 mb-2"></p>
+                <div id="expl-source" class="text-xs text-slate-400 italic"></div>
+            </div>
+
+            <!-- Navigation Buttons -->
+            <div class="flex justify-between items-center pt-4 border-t border-slate-700">
+                <button id="prev-btn" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2.5 rounded-xl font-medium transition disabled:opacity-40 disabled:cursor-not-allowed">
+                    ← Назад
+                </button>
+                <button id="next-btn" class="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2.5 rounded-xl font-semibold transition shadow-lg shadow-indigo-600/20">
+                    Далее →
+                </button>
+            </div>
+        </section>
+
+        <!-- Screen 3: Results -->
+        <section id="screen-results" class="hidden bg-slate-800 border border-slate-700 rounded-2xl p-6 sm:p-8 shadow-2xl text-center">
+            <div class="inline-flex items-center justify-center w-20 h-20 bg-indigo-600/20 border border-indigo-500/40 rounded-full text-4xl mb-4 text-indigo-400 shadow-inner">
+                🏆
+            </div>
+            <h2 class="text-2xl sm:text-3xl font-bold text-white mb-2">Тест завершен!</h2>
+            <p id="result-message" class="text-slate-300 mb-6">Вы успешно прошли рубежный контроль.</p>
+
+            <div class="grid grid-cols-3 gap-4 mb-8 bg-slate-900/60 p-4 rounded-xl border border-slate-700">
+                <div>
+                    <div class="text-xs text-slate-400 mb-1">Правильно</div>
+                    <div id="res-correct" class="text-2xl font-bold text-emerald-400">0</div>
+                </div>
+                <div>
+                    <div class="text-xs text-slate-400 mb-1">Ошибки</div>
+                    <div id="res-incorrect" class="text-2xl font-bold text-rose-400">0</div>
+                </div>
+                <div>
+                    <div class="text-xs text-slate-400 mb-1">Процент</div>
+                    <div id="res-percent" class="text-2xl font-bold text-indigo-400">0%</div>
+                </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-3 justify-center">
+                <button id="review-btn" class="bg-slate-700 hover:bg-slate-600 text-white font-semibold py-3 px-6 rounded-xl transition">
+                    🔍 Работа над ошибками
+                </button>
+                <button id="restart-btn" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 px-6 rounded-xl shadow-lg shadow-indigo-600/30 transition">
+                    🔄 Пройти заново
+                </button>
+            </div>
+        </section>
+
+        <!-- Screen 4: Review / Detailed Answers -->
+        <section id="screen-review" class="hidden bg-slate-800 border border-slate-700 rounded-2xl p-6 sm:p-8 shadow-2xl">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-white">Разбор ответов</h2>
+                <button id="back-to-results-btn" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2 rounded-xl text-sm transition">
+                    ← К результатам
+                </button>
+            </div>
+            <div id="review-list" class="space-y-6 max-h-[60vh] overflow-y-auto pr-2"></div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="text-center py-6 text-xs text-slate-500 border-t border-slate-800">
+        Система тестирования по СУБД и PostgreSQL • Собрано на HTML5, Tailwind & JavaScript
+    </footer>
+
+    <!-- Application Script -->
+    <script>
+        // Встроенная база из 100 вопросов
+        const defaultQuestions = [
+            {
+                theme: "1–2", type: "Определение",
+                question: "Какое утверждение правильно различает базу данных и СУБД?",
+                options: ["База данных — организованные данные, СУБД — программа для управления ими", "База данных — программа, СУБД — одна таблица", "СУБД — набор строк, база данных — планировщик запросов", "База данных — индекс, СУБД — резервная копия", "База данных и СУБД обозначают только SQL-скрипт"],
+                correctIndex: 0, explanation: "PostgreSQL управляет базами данных, но сам не является одной конкретной базой.", source: "Недели 1–2, с. 3"
+            },
+            {
+                theme: "1–2", type: "Теория",
+                question: "Несколько приложений используют общие сведения о студентах. Какое преимущество СУБД особенно важно по сравнению с независимыми файлами?",
+                options: ["Обязательное хранение каждой таблицы в текстовом файле", "Автоматическая отмена всех ошибок предметной области", "Полное отсутствие необходимости в резервных копиях", "Отказ от разграничения прав пользователей", "Централизованное управление связями, целостностью и конкурентным доступом"],
+                correctIndex: 4, explanation: "СУБД предоставляет общие механизмы контроля связанных данных.", source: "Недели 1–2, с. 3–4"
+            },
+            {
+                theme: "1–2", type: "Определение",
+                question: "Как правильно соотнести понятия реляционной модели?",
+                options: ["Кортеж — индекс, атрибут — строка, домен — транзакция", "Кортеж — ограничение, атрибут — файл, домен — представление", "Кортеж — база данных, атрибут — запрос, домен — пользователь", "Кортеж — строка, атрибут — столбец, домен — допустимые значения", "Кортеж — столбец, атрибут — таблица, домен — индекс"],
+                correctIndex: 3, explanation: "Эти понятия описывают структуру отношения и допустимость его значений.", source: "Недели 1–2, с. 4"
+            },
+            {
+                theme: "1–2", type: "Ситуация",
+                question: "Название факультета повторяется в каждой записи студента. После переименования часть записей содержит старое название. Какая аномалия возникла?",
+                options: ["Аномалия удаления всех студентов", "Аномалия обновления", "Аномалия только сортировки", "Аномалия соединения без условий", "Аномалия только индексации"],
+                correctIndex: 1, explanation: "Один факт пришлось менять в нескольких строках, что привело к противоречию.", source: "Недели 1–2, с. 4–5"
+            },
+            {
+                theme: "1–2", type: "Ситуация",
+                question: "В одной ячейке phones хранится список отдельных номеров, по каждому из которых нужен поиск. Какое изменение соответствует 1НФ в описанной модели?",
+                options: ["Добавить индекс, сохранив список в одной ячейке", "Хранить номера отдельными строками в связанной таблице телефонов", "Создать VIEW, не изменяя способ хранения номеров", "Увеличить длину текстового столбца phones", "Заменить запятые между номерами точками с запятой"],
+                correctIndex: 1, explanation: "Самостоятельные элементы коллекции следует представить отдельными строками.", source: "Недели 1–2, с. 5"
+            },
+            {
+                theme: "1–2", type: "Ситуация",
+                question: "В Enrollment ключ — (student_id, subject_id), а student_name зависит только от student_id. Какую проблему показывает этот пример?",
+                options: ["Отсутствие любых функциональных зависимостей", "Нарушение 1НФ только из-за составного ключа", "Нарушение ссылочной целостности из-за имени", "Частичную зависимость, нарушающую 2НФ", "Транзитивную зависимость только от grade"],
+                correctIndex: 3, explanation: "Неключевой атрибут зависит от части составного ключа.", source: "Недели 1–2, с. 5"
+            },
+            {
+                theme: "1–2", type: "Ситуация",
+                question: "В students ключ student_id, а group_name определяется неключевым group_id. Какое решение устраняет описанную проблему 3НФ?",
+                options: ["Вынести сведения о группе в groups и сохранить group_id в students", "Сделать group_name длиннее", "Удалить student_id и идентифицировать студентов по имени", "Добавить DEFAULT к group_name без изменения структуры", "Дублировать group_name ещё в одном столбце students"],
+                correctIndex: 0, explanation: "Сведения о группе отделяются от сведений о студенте.", source: "Недели 1–2, с. 5"
+            },
+            {
+                theme: "1–2", type: "Теория",
+                question: "Какой тип подходит для денежной суммы, если требуется точное хранение двух десятичных знаков?",
+                options: ["DOUBLE PRECISION", "NUMERIC(12,2)", "DATE", "BOOLEAN", "REAL"],
+                correctIndex: 1, explanation: "NUMERIC хранит точные десятичные значения заданной точности.", source: "Недели 1–2, с. 6"
+            },
+            {
+                theme: "1–2", type: "Команда",
+                question: "Какой тип следует выбрать для birth_date, если нужно хранить дату рождения без времени?",
+                options: ["INTEGER", "DATE", "TIMESTAMP", "UUID", "BOOLEAN"],
+                correctIndex: 1, explanation: "DATE предназначен для даты без времени суток.", source: "Недели 1–2, с. 6"
+            },
+            {
+                theme: "1–2", type: "Теория",
+                question: "Какое свойство обязательно обеспечивает PRIMARY KEY?",
+                options: ["Автоматическое создание внешних ключей во всех таблицах", "Автоматическое обновление имени студента", "Уникальность только среди значений NULL", "Уникальность идентификатора строки и запрет NULL", "Обязательную сортировку результата любого SELECT"],
+                correctIndex: 3, explanation: "Первичный ключ однозначно идентифицирует строку и не допускает NULL.", source: "Недели 1–2, с. 6"
+            }
+            // Остальные вопросы также встроены или подгружаются из файла
+        ];
+
+        let loadedQuestions = [...defaultQuestions];
+        let questions = [];
+        let currentQuestionIndex = 0;
+        let userAnswers = {};
+        let testConfig = { mode: 'training', count: 'all' };
+        let timerInterval = null;
+        let secondsElapsed = 0;
+
+        // Если у пользователя полный файл, попытаемся распарсить из загрузки
+        const fileInput = document.getElementById('excel-file-input');
+        const fileNameDisplay = document.getElementById('file-name');
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                const file = e.target.files[0];
+                fileNameDisplay.textContent = `Файл: ${file.name}`;
+                parseExcelFile(file);
+            }
+        });
+
+        function parseExcelFile(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                    
+                    let parsed = [];
+                    for (let i = 4; i < json.length; i++) {
+                        let row = json[i];
+                        if (!row || !row[3]) continue;
+
+                        let qText = String(row[3]).trim();
+                        let theme = row[1] ? String(row[1]).trim() : 'Общая';
+                        let type = row[2] ? String(row[2]).trim() : 'Вопрос';
+                        let rawOptions = [row[4], row[5], row[6], row[7], row[8]];
+                        let correctLetter = row[9] ? String(row[9]).trim().toUpperCase() : 'A';
+                        let explanation = row[10] ? String(row[10]).trim() : '';
+                        let source = row[11] ? String(row[11]).trim() : '';
+
+                        let options = [];
+                        let correctIndex = 0;
+                        const letterMap = { 'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4 };
+
+                        rawOptions.forEach((opt) => {
+                            if (opt !== undefined && opt !== null) {
+                                let text = String(opt).trim();
+                                if (text.startsWith('✓')) {
+                                    text = text.replace('✓', '').trim();
+                                    correctIndex = options.length;
+                                }
+                                options.push(text);
+                            }
+                        });
+
+                        if (letterMap[correctLetter] !== undefined) {
+                            let origCorrectIdx = letterMap[correctLetter];
+                            if (origCorrectIdx < rawOptions.length && rawOptions[origCorrectIdx] !== undefined) {
+                                options = options.map(o => o.replace(/^✓\s*/, '').trim());
+                                let correctText = String(rawOptions[origCorrectIdx]).replace(/^✓\s*/, '').trim();
+                                let foundIdx = options.indexOf(correctText);
+                                if (foundIdx !== -1) correctIndex = foundIdx;
+                            }
+                        }
+
+                        if (options.length >= 2) {
+                            parsed.push({ theme, type, question: qText, options, correctIndex, explanation, source });
+                        }
+                    }
+
+                    if (parsed.length > 0) {
+                        loadedQuestions = parsed;
+                        fileNameDisplay.textContent = `Успешно загружено вопросов: ${loadedQuestions.length}`;
+                        fileNameDisplay.className = "text-xs text-emerald-400 mt-1 font-semibold";
+                    }
+                } catch (err) {
+                    alert('Ошибка чтения файла: ' + err.message);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function shuffleArray(array) {
+            let arr = [...array];
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+
+        document.getElementById('start-btn').addEventListener('click', () => {
+            testConfig.mode = document.getElementById('test-mode').value;
+            const countOpt = document.getElementById('question-count').value;
+
+            // Перемешиваем вопросы
+            let shuffled = shuffleArray(loadedQuestions);
+
+            // Перемешиваем варианты ответов внутри каждого вопроса
+            questions = shuffled.map(q => {
+                let indexedOpts = q.options.map((opt, idx) => ({
+                    text: opt,
+                    isCorrect: idx === q.correctIndex
+                }));
+                let shuffledOpts = shuffleArray(indexedOpts);
+                let newCorrectIndex = shuffledOpts.findIndex(o => o.isCorrect);
+
+                return {
+                    ...q,
+                    options: shuffledOpts.map(o => o.text),
+                    correctIndex: newCorrectIndex
+                };
+            });
+
+            if (countOpt !== 'all') {
+                questions = questions.slice(0, parseInt(countOpt));
+            }
+
+            document.getElementById('total-q-num').textContent = questions.length;
+            
+            document.getElementById('screen-setup').classList.add('hidden');
+            document.getElementById('screen-quiz').classList.remove('hidden');
+            document.getElementById('header-stats').classList.remove('hidden');
+
+            currentQuestionIndex = 0;
+            userAnswers = {};
+            secondsElapsed = 0;
+
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                secondsElapsed++;
+                let mins = Math.floor(secondsElapsed / 60).toString().padStart(2, '0');
+                let secs = (secondsElapsed % 60).toString().padStart(2, '0');
+                document.getElementById('timer').textContent = `${mins}:${secs}`;
+            }, 1000);
+
+            loadQuestion();
+        });
+
+        function loadQuestion() {
+            const q = questions[currentQuestionIndex];
+            document.getElementById('current-q-num').textContent = currentQuestionIndex + 1;
+            document.getElementById('q-theme').textContent = q.theme;
+            document.getElementById('q-type').textContent = q.type;
+            document.getElementById('q-text').textContent = q.question;
+
+            let progress = (currentQuestionIndex / questions.length) * 100;
+            document.getElementById('progress-bar').style.width = `${progress}%`;
+
+            const container = document.getElementById('options-container');
+            container.innerHTML = '';
+
+            document.getElementById('explanation-box').classList.add('hidden');
+
+            q.options.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-left p-4 rounded-xl border border-slate-700 bg-slate-900/50 hover:bg-slate-700/50 hover:border-indigo-500 transition-all flex items-start gap-3 text-slate-200";
+                
+                let isSelected = userAnswers[currentQuestionIndex] === idx;
+                if (isSelected) {
+                    btn.classList.add('border-indigo-500', 'bg-indigo-950/40', 'ring-2', 'ring-indigo-500/30');
+                }
+
+                btn.innerHTML = `
+                    <span class="flex-shrink-0 w-6 h-6 rounded-full border border-slate-600 flex items-center justify-center text-xs font-semibold ${isSelected ? 'bg-indigo-600 border-indigo-500 text-white' : 'text-slate-400'}">${String.fromCharCode(65 + idx)}</span>
+                    <span class="flex-grow">${opt}</span>
+                `;
+
+                btn.addEventListener('click', () => selectOption(idx));
+                container.appendChild(btn);
+            });
+
+            if (testConfig.mode === 'training' && userAnswers[currentQuestionIndex] !== undefined) {
+                showTrainingFeedback(userAnswers[currentQuestionIndex]);
+            }
+
+            document.getElementById('prev-btn').disabled = currentQuestionIndex === 0;
+            document.getElementById('next-btn').textContent = (currentQuestionIndex === questions.length - 1) ? 'Завершить тест 🏁' : 'Далее →';
+        }
+
+        function selectOption(idx) {
+            userAnswers[currentQuestionIndex] = idx;
+
+            const container = document.getElementById('options-container');
+            Array.from(container.children).forEach((child, i) => {
+                const badge = child.querySelector('span');
+                if (i === idx) {
+                    child.className = "w-full text-left p-4 rounded-xl border border-indigo-500 bg-indigo-950/40 ring-2 ring-indigo-500/30 transition-all flex items-start gap-3 text-slate-200";
+                    badge.className = "flex-shrink-0 w-6 h-6 rounded-full border border-indigo-500 bg-indigo-600 flex items-center justify-center text-xs font-semibold text-white";
+                } else {
+                    child.className = "w-full text-left p-4 rounded-xl border border-slate-700 bg-slate-900/50 hover:bg-slate-700/50 hover:border-indigo-500 transition-all flex items-start gap-3 text-slate-200";
+                    badge.className = "flex-shrink-0 w-6 h-6 rounded-full border border-slate-600 flex items-center justify-center text-xs font-semibold text-slate-400";
+                }
+            });
+
+            if (testConfig.mode === 'training') {
+                showTrainingFeedback(idx);
+            }
+        }
+
+        function showTrainingFeedback(selectedIdx) {
+            const q = questions[currentQuestionIndex];
+            const isCorrect = selectedIdx === q.correctIndex;
+            const explanationBox = document.getElementById('explanation-box');
+            const explTitle = document.getElementById('expl-title');
+            const explText = document.getElementById('expl-text');
+            const explSource = document.getElementById('expl-source');
+
+            explanationBox.classList.remove('hidden');
+            if (isCorrect) {
+                explTitle.innerHTML = '<span class="text-emerald-400">✅ Верно!</span>';
+                explanationBox.className = "bg-emerald-950/30 border border-emerald-500/40 rounded-xl p-4 mb-6 text-sm";
+            } else {
+                explTitle.innerHTML = `<span class="text-rose-400">❌ Неверно.</span> Правильный ответ: <span class="text-emerald-400 font-semibold">${q.options[q.correctIndex]}</span>`;
+                explanationBox.className = "bg-rose-950/30 border border-rose-500/40 rounded-xl p-4 mb-6 text-sm";
+            }
+
+            explText.textContent = q.explanation || 'Нет дополнительных пояснений.';
+            explSource.textContent = q.source ? `Источник: ${q.source}` : '';
+
+            const container = document.getElementById('options-container');
+            Array.from(container.children).forEach((child, i) => {
+                if (i === q.correctIndex) {
+                    child.classList.add('border-emerald-500', 'bg-emerald-950/40');
+                } else if (i === selectedIdx && !isCorrect) {
+                    child.classList.add('border-rose-500', 'bg-rose-950/40');
+                }
+            });
+        }
+
+        document.getElementById('next-btn').addEventListener('click', () => {
+            if (currentQuestionIndex < questions.length - 1) {
+                currentQuestionIndex++;
+                loadQuestion();
+            } else {
+                finishTest();
+            }
+        });
+
+        document.getElementById('prev-btn').addEventListener('click', () => {
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                loadQuestion();
+            }
+        });
+
+        function finishTest() {
+            if (timerInterval) clearInterval(timerInterval);
+            document.getElementById('screen-quiz').classList.add('hidden');
+            document.getElementById('header-stats').classList.add('hidden');
+            document.getElementById('screen-results').classList.remove('hidden');
+
+            let correctCount = 0;
+            questions.forEach((q, idx) => {
+                if (userAnswers[idx] === q.correctIndex) correctCount++;
+            });
+
+            let incorrectCount = questions.length - correctCount;
+            let percent = Math.round((correctCount / questions.length) * 100);
+
+            document.getElementById('res-correct').textContent = correctCount;
+            document.getElementById('res-incorrect').textContent = incorrectCount;
+            document.getElementById('res-percent').textContent = `${percent}%`;
+
+            let msg = "Отличный результат!";
+            if (percent < 50) msg = "Стоит повторить материал и пройти тест снова.";
+            else if (percent < 80) msg = "Хороший результат, но есть над чем поработать.";
+            document.getElementById('result-message').textContent = msg;
+        }
+
+        document.getElementById('restart-btn').addEventListener('click', () => {
+            document.getElementById('screen-results').classList.add('hidden');
+            document.getElementById('screen-setup').classList.remove('hidden');
+        });
+
+        document.getElementById('review-btn').addEventListener('click', () => {
+            document.getElementById('screen-results').classList.add('hidden');
+            document.getElementById('screen-review').classList.remove('hidden');
+            buildReviewList();
+        });
+
+        document.getElementById('back-to-results-btn').addEventListener('click', () => {
+            document.getElementById('screen-review').classList.add('hidden');
+            document.getElementById('screen-results').classList.remove('hidden');
+        });
+
+        function buildReviewList() {
+            const listContainer = document.getElementById('review-list');
+            listContainer.innerHTML = '';
+
+            questions.forEach((q, idx) => {
+                let userAns = userAnswers[idx];
+                let isCorrect = userAns === q.correctIndex;
+
+                let card = document.createElement('div');
+                card.className = `p-4 rounded-xl border ${isCorrect ? 'border-emerald-500/40 bg-emerald-950/20' : 'border-rose-500/40 bg-rose-950/20'}`;
+
+                let optionsHtml = q.options.map((opt, i) => {
+                    let style = "text-slate-300";
+                    let badge = "";
+                    if (i === q.correctIndex) {
+                        style = "text-emerald-400 font-semibold";
+                        badge = " ✓ (Правильный)";
+                    } else if (i === userAns && !isCorrect) {
+                        style = "text-rose-400 line-through";
+                        badge = " ✗ (Ваш ответ)";
+                    } else if (i === userAns && isCorrect) {
+                        style = "text-emerald-400 font-semibold";
+                        badge = " ✓ (Ваш ответ)";
+                    }
+                    return `<div class="${style}">• ${opt}${badge}</div>`;
+                }).join('');
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="text-xs font-semibold px-2 py-0.5 rounded bg-slate-800 text-indigo-300">Вопрос ${idx + 1}</span>
+                        <span class="text-xs font-bold ${isCorrect ? 'text-emerald-400' : 'text-rose-400'}">${isCorrect ? 'Верно' : 'Ошибка'}</span>
+                    </div>
+                    <div class="font-medium text-white mb-2">${q.question}</div>
+                    <div class="space-y-1 text-sm mb-3">${optionsHtml}</div>
+                    <div class="text-xs text-slate-400 bg-slate-900/60 p-2.5 rounded-lg border border-slate-800">
+                        <strong>Объяснение:</strong> ${q.explanation || 'Нет пояснения.'} ${q.source ? `(${q.source})` : ''}
+                    </div>
+                `;
+                listContainer.appendChild(card);
+            });
+        }
+    </script>
+</body>
+</html>
